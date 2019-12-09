@@ -50,8 +50,7 @@ class ACGAN():
         # The combined model  (stacked generator and discriminator)
         # Trains the generator to fool the discriminator
         self.combined = Model([noise, label], [valid, target_label])
-        self.combined.compile(loss=losses,
-            optimizer=optimizer)
+        self.combined.compile(loss=losses, optimizer=optimizer)
 
     def build_generator(self):
 

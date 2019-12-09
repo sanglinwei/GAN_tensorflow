@@ -7,7 +7,7 @@ from keras.datasets import mnist
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
+from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 import sys
@@ -35,41 +35,49 @@ def build_generator(latent_dim=100, channels=1):
     model = Sequential()
 
     # transposed convolution
-    model.add(Dense(128 * 7 * 24, activation='relu', input_dim=latent_dim))
-    model.add(Reshape((7, 24, 128)))
-    model.add(UpSampling2D(size=(1, 2)))
-    model.add(Conv2D(128, kernel_size=3, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-    model.add(UpSampling2D(size=(1, 2)))
-    model.add(Conv2D(64, kernel_size=3, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-    model.add(Conv2D(channels, kernel_size=3, padding='same'))
+    # model.add(Dense(128 * 7 * 24, activation='relu', input_dim=latent_dim))
+    # model.add(Reshape((7, 24, 128)))
+    # model.add(UpSampling2D(size=(1, 2)))
+    # model.add(Conv2D(128, kernel_size=3, padding='same'))
+    # model.add(BatchNormalization(momentum=0.8))
+    # model.add(Activation('relu'))
+    # model.add(UpSampling2D(size=(1, 2)))
+    # model.add(Conv2D(64, kernel_size=3, padding='same'))
+    # model.add(BatchNormalization(momentum=0.8))
+    # model.add(Activation('relu'))
+    # model.add(Conv2D(channels, kernel_size=3, padding='same'))
+    # model.add(Activation('sigmoid'))
+
+    # GAN papers
+    model.add(Dense(2 * 24 * 80, activation='relu', input_dim=latent_dim))
+    model.add(Reshape((2, 24, 80)))
+    model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1), name='strange_padding'))
     model.add(Activation('sigmoid'))
 
     model.summary()
 
-    noise = Input(shape=(latent_dim,))
-    img = model(noise)
+    _noise = Input(shape=(latent_dim,))
+    _img = model(_noise)
 
-    Model(noise, img).summary()
+    Model(_noise, _img).summary()
 
-    return Model(noise, img)
+    return Model(_noise, _img)
 
 
 def build_discriminator(img_shape=(7, 96, 1)):
 
     model = Sequential()
 
-    model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(Dropout(0.25))
-    model.add(Conv2D(256, kernel_size=4, strides=2, padding='same'))
-    model.add(ZeroPadding2D(padding=((0, 1), (0, 1))))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(Dropout(0.25))
+    # model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
+    # model.add(LeakyReLU(alpha=0.2))
+    # model.add(Dropout(0.25))
+    # model.add(Conv2D(256, kernel_size=4, strides=2, padding='same'))
+    # model.add(ZeroPadding2D(padding=((0, 1), (0, 1))))
+    # model.add(BatchNormalization(momentum=0.8))
+    # model.add(LeakyReLU(alpha=0.2))
+    # model.add(Dropout(0.25))
     # model.add(Conv2D(128, kernel_size=3, strides=2, padding='same'))
     # model.add(BatchNormalization(momentum=0.8))
     # model.add(LeakyReLU(alpha=0.2))
@@ -78,18 +86,26 @@ def build_discriminator(img_shape=(7, 96, 1)):
     # model.add(BatchNormalization(momentum=0.8))
     # model.add(LeakyReLU(alpha=0.2))
     # model.add(Dropout(0.25))
+
+    # GAN paper
+    model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
+    model.add(LeakyReLU(0.2))
+    model.add(Dropout(0.3))
+    model.add(Conv2D(256, kernel_size=4, strides=2, padding='same'))
+    model.add(LeakyReLU(0.2))
+    model.add(Dropout(0.3))
     model.add(Flatten())
-    model.add(Dense(1))
-    model.add(LeakyReLU())
+    model.add(Dense(3072))
+    model.add(LeakyReLU(0.2))
+    model.add(Dropout(0.3))
+    model.add(Dense(1, activation='sigmoid'))
 
-    model.summary()
+    _img = Input(shape=img_shape)
+    validity = model(_img)
 
-    img = Input(shape=img_shape)
-    validity = model(img)
+    Model(_img, validity).summary()
 
-    Model(img, validity).summary()
-
-    return Model(img, validity)
+    return Model(_img, validity)
 
 
 if __name__ == '__main__':
@@ -101,7 +117,7 @@ if __name__ == '__main__':
     img_shape = (img_rows, img_cols, channels)
     latent_dim = 100
 
-    optimizer = Adam(0.0002, 0.5)
+    optimizer = Adam(0.00002, 0.5)
 
     discriminator = build_discriminator(img_shape)
     discriminator.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
@@ -122,25 +138,28 @@ if __name__ == '__main__':
 
     # training
     # read data
-    root_path = 'sample_data/Jiangxi_data/'
+    root_path = 'dataport/'
     # save_root_path = 'processed_data/'
     sample_path, sample_name = get_file_paths(root_path)
 
     # choose training data
-    dataset_id = 1
+    dataset_id = 0
     df1 = pd.read_csv(sample_path[dataset_id])
     idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
-    np1 = df1["PAP_R"][0:idx].to_numpy().reshape((-1, 7, 96))
-    load_data = np.expand_dims(np1, axis=3)
+    np1 = df1[0:idx].to_numpy()[:, 1]
+    for i in range(df1.shape[1]-2):
+        np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i+2]), axis=0)
+    np2 = np1.reshape((-1, 7, 96))
+    load_data = np.expand_dims(np2, axis=3)
 
     # scale to -1 - 1
-    scale = df1["PAP_R"].max()
-    scaled_load_data = load_data / scale * 2 - 1
+    scale = np1.max()-np1.min()
+    scaled_load_data = (load_data-np1.min()) / scale * 2 - 1
     print('scaled_load_data')
     # print(scaled_load_data)
     # training
-    epochs = 2
-    batch_size = 16
+    epochs = 20
+    batch_size = 32
     save_interval = 50
 
     # ground truth
@@ -161,7 +180,6 @@ if __name__ == '__main__':
         noise = np.random.normal(0, 1, (batch_size, latent_dim))
         gen_imgs = generator.predict(noise)
         print('generate images')
-        print(gen_imgs)
         print(gen_imgs.shape)
 
         d_loss_real = discriminator.train_on_batch(imgs, valid)
@@ -183,10 +201,11 @@ if __name__ == '__main__':
             r, c = 1, 1
             noise = np.random.normal(0, 1, (r * c, latent_dim))
             gen_imgs = generator.predict(noise)
-            gen_load = gen_imgs.reshape((-1, 7 * 96))
+            gen_load = gen_imgs.reshape((7 * 96, -1))
 
             fig, axs = plt.subplots(r, c)
             plt.plot(gen_load)
+            plt.show()
             # cnt = 0
             # for i in range(r):
             #     for j in range(c):
@@ -196,6 +215,7 @@ if __name__ == '__main__':
 
             fig.savefig("image/generate_load_%d.png" % epoch)
             plt.close()
+
 
 # for plotting
 

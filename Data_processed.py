@@ -44,3 +44,4 @@ if __name__ == '__main__':
     df_r = pd.read_csv(r)
     df_r['CONSNO'].value_counts()
 
+

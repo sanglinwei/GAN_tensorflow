@@ -14,6 +14,7 @@ import sys
 
 import numpy as np
 
+np.random.seed(1337)
 
 class GAN():
     def __init__(self):
@@ -46,7 +47,6 @@ class GAN():
         # Trains the generator to fool the discriminator
         self.combined = Model(z, validity)
         self.combined.compile(loss='binary_crossentropy', optimizer=optimizer)
-
 
     def build_generator(self):
 

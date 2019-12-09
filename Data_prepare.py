@@ -6,7 +6,7 @@ from __future__ import print_function, division
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
+from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 import sys
@@ -65,17 +65,25 @@ class DCGAN():
         model = Sequential()
 
         # transposed convolution
-        model.add(Dense(128 * 7 * 24, activation='relu', input_dim=self.latent_dim))
-        model.add(Reshape((7, 24, 128)))
-        model.add(UpSampling2D(size=(1, 2)))
-        model.add(Conv2D(128, kernel_size=3, padding='same'))
+        # model.add(Dense(128 * 7 * 24, activation='relu', input_dim=self.latent_dim))
+        #         # model.add(Reshape((7, 24, 128)))
+        #         # model.add(UpSampling2D(size=(1, 2)))
+        #         # model.add(Conv2D(128, kernel_size=3, padding='same'))
+        #         # model.add(BatchNormalization(momentum=0.8))
+        #         # model.add(Activation('relu'))
+        #         # model.add(UpSampling2D(size=(1, 2)))
+        #         # model.add(Conv2D(64, kernel_size=3, padding='same'))
+        #         # model.add(BatchNormalization(momentum=0.8))
+        #         # model.add(Activation('relu'))
+        #         # model.add(Conv2D(self.channels, kernel_size=3, padding='same'))
+
+        # GAN papers
+        model.add(Dense(2 * 12 * 80, activation='relu', input_dim=self.latent_dim))
+        model.add(Reshape(2, 12, 80))
+        model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(Activation('relu'))
-        model.add(UpSampling2D(size=(1, 2)))
-        model.add(Conv2D(64, kernel_size=3, padding='same'))
+        model.add(Conv2DTranspose(1, kernel_size=4, strides=2, padding='same'))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(Activation('relu'))
-        model.add(Conv2D(self.channels, kernel_size=3, padding='same'))
         model.add(Activation('sigmoid'))
 
         model.summary()

@@ -9,7 +9,7 @@ from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
-from keras.optimizers import Adam
+from keras.optimizers import Adam, rmsprop
 import sys
 import matplotlib.pyplot as plt
 
@@ -117,10 +117,11 @@ if __name__ == '__main__':
     img_shape = (img_rows, img_cols, channels)
     latent_dim = 100
 
-    optimizer = Adam(0.00002, 0.5)
+    optimizer_gen = Adam(0.00002, 0.5)
+    optimizer_dis = Adam(0.00002*20, 0.5)
 
     discriminator = build_discriminator(img_shape)
-    discriminator.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    discriminator.compile(loss='binary_crossentropy', optimizer=optimizer_dis, metrics=['accuracy'])
 
     generator = build_generator(latent_dim, channels)
 
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     valid = discriminator(img)
 
     combined = Model(z, valid)
-    combined.compile(loss='binary_crossentropy', optimizer=optimizer)
+    combined.compile(loss='binary_crossentropy', optimizer=optimizer_gen)
 
     # training
     # read data
@@ -159,7 +160,7 @@ if __name__ == '__main__':
     # print(scaled_load_data)
     # training
     epochs = 20
-    batch_size = 32
+    batch_size = 4
     save_interval = 50
 
     # ground truth

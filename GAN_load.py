@@ -49,10 +49,11 @@ def build_generator(latent_dim=100, channels=1):
     # model.add(Activation('sigmoid'))
 
     # GAN papers
-    model.add(Dense(2 * 24 * 80, activation='relu', input_dim=latent_dim))
-    model.add(Reshape((2, 24, 80)))
+    model.add(Dense(2 * 12 * 80, activation='relu', input_dim=latent_dim))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Reshape((2, 12, 80)))
     model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
-    model.add(BatchNormalization())
+    model.add(BatchNormalization(momentum=0.8))
     model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1), name='strange_padding'))
     model.add(Activation('sigmoid'))
 
@@ -66,7 +67,7 @@ def build_generator(latent_dim=100, channels=1):
     return Model(_noise, _img)
 
 
-def build_discriminator(img_shape=(7, 96, 1)):
+def build_discriminator(img_shape=(7, 48, 1)):
 
     model = Sequential()
 
@@ -112,13 +113,13 @@ if __name__ == '__main__':
 
     # build GAN
     img_rows = 7
-    img_cols = 96
+    img_cols = 48
     channels = 1
     img_shape = (img_rows, img_cols, channels)
     latent_dim = 100
 
-    optimizer_gen = Adam(0.00002, 0.5)
-    optimizer_dis = Adam(0.00002*20, 0.5)
+    optimizer_gen = Adam(0.0001, 0.5)
+    optimizer_dis = Adam(0.00005, 0.5)
 
     discriminator = build_discriminator(img_shape)
     discriminator.compile(loss='binary_crossentropy', optimizer=optimizer_dis, metrics=['accuracy'])
@@ -146,11 +147,11 @@ if __name__ == '__main__':
     # choose training data
     dataset_id = 0
     df1 = pd.read_csv(sample_path[dataset_id])
-    idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
+    idx = int(df1.shape[0] / (7 * 48)) * 7 * 48
     np1 = df1[0:idx].to_numpy()[:, 1]
     for i in range(df1.shape[1]-2):
         np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i+2]), axis=0)
-    np2 = np1.reshape((-1, 7, 96))
+    np2 = np1.reshape((-1, 7, 48))
     load_data = np.expand_dims(np2, axis=3)
 
     # scale to -1 - 1
@@ -159,8 +160,8 @@ if __name__ == '__main__':
     print('scaled_load_data')
     # print(scaled_load_data)
     # training
-    epochs = 20
-    batch_size = 4
+    epochs = 10
+    batch_size = 32
     save_interval = 50
 
     # ground truth
@@ -202,7 +203,7 @@ if __name__ == '__main__':
             r, c = 1, 1
             noise = np.random.normal(0, 1, (r * c, latent_dim))
             gen_imgs = generator.predict(noise)
-            gen_load = gen_imgs.reshape((7 * 96, -1))
+            gen_load = gen_imgs.reshape((7 * 48, -1))
 
             fig, axs = plt.subplots(r, c)
             plt.plot(gen_load)

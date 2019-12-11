@@ -20,13 +20,10 @@ def get_file_paths(directory):
 if __name__ == '__main__':
 
     # read data
-    root_path = 'dataport/'
-
-    # save_root_path = 'processed_data/'
-    sample_path, sample_name = get_file_paths(root_path)
-    sample_path.sort()
-    metadata = pd.read_csv(sample_path[0])
-    df0 = pd.read_csv(sample_path[0])
+    root_path = 'dataport/metadata.csv'
+    metadata = pd.read_csv(root_path)
+    metadata_extract = metadata[['dataid', 'city', 'state']]
+    metadata_extract.to_csv('processed_data/metadata_extract.csv')
 
     # df1 = pd.read_csv(sample_path[1])
     # time_tran = pd.to_datetime(df0['DATA_TIME'])

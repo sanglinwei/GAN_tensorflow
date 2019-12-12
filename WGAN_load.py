@@ -9,9 +9,11 @@ from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
-from keras.optimizers import Adam, rmsprop
+from keras.optimizers import Adam, RMSprop
 import sys
 import matplotlib.pyplot as plt
+
+import keras.backend as K
 
 import pandas as pd
 import numpy as np
@@ -49,13 +51,15 @@ def build_generator(latent_dim=100, channels=1):
     # model.add(Activation('sigmoid'))
 
     # GAN papers
-    model.add(Dense(2 * 12 * 80, activation='relu', input_dim=latent_dim))
+    model.add(Dense(2 * 24 * 80, activation='relu', input_dim=latent_dim))
+    # model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Reshape((2, 12, 80)))
+    model.add(Reshape((2, 24, 80)))
     model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
     model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1), name='strange_padding'))
-    model.add(Activation('sigmoid'))
+    model.add(Activation('tanh'))
 
     model.summary()
 
@@ -67,7 +71,7 @@ def build_generator(latent_dim=100, channels=1):
     return Model(_noise, _img)
 
 
-def build_discriminator(img_shape=(7, 48, 1)):
+def build_discriminator(img_shape=(7, 96, 1)):
 
     model = Sequential()
 
@@ -90,9 +94,10 @@ def build_discriminator(img_shape=(7, 48, 1)):
 
     # GAN paper
     model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
-    model.add(LeakyReLU(0.2))
+    model.add(LeakyReLU())
     model.add(Dropout(0.3))
     model.add(Conv2D(256, kernel_size=4, strides=2, padding='same'))
+    model.add(BatchNormalization(momentum=0.8))
     model.add(LeakyReLU(0.2))
     model.add(Dropout(0.3))
     model.add(Flatten())
@@ -109,20 +114,26 @@ def build_discriminator(img_shape=(7, 48, 1)):
     return Model(_img, validity)
 
 
+def wasserstein_loss(y_true, y_pred):
+    return K.mean(y_true * y_pred)
+
+
 if __name__ == '__main__':
 
     # build GAN
     img_rows = 7
-    img_cols = 48
+    img_cols = 96
     channels = 1
     img_shape = (img_rows, img_cols, channels)
     latent_dim = 100
 
-    optimizer_gen = Adam(0.0001, 0.5)
-    optimizer_dis = Adam(0.00005, 0.5)
+    # wasserstein parameters
+    n_critic = 5
+    clip_value = 0.01
+    optimizer = RMSprop(lr=0.00005)
 
     discriminator = build_discriminator(img_shape)
-    discriminator.compile(loss='binary_crossentropy', optimizer=optimizer_dis, metrics=['accuracy'])
+    discriminator.compile(loss=wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
     generator = build_generator(latent_dim, channels)
 
@@ -136,7 +147,7 @@ if __name__ == '__main__':
     valid = discriminator(img)
 
     combined = Model(z, valid)
-    combined.compile(loss='binary_crossentropy', optimizer=optimizer_gen)
+    combined.compile(loss=wasserstein_loss, optimizer=optimizer, metrics=['accuracy'])
 
     # training
     # read data
@@ -147,47 +158,54 @@ if __name__ == '__main__':
     # choose training data
     dataset_id = 0
     df1 = pd.read_csv(sample_path[dataset_id])
-    idx = int(df1.shape[0] / (7 * 48)) * 7 * 48
+    idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
     np1 = df1[0:idx].to_numpy()[:, 1]
     for i in range(df1.shape[1]-2):
         np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i+2]), axis=0)
-    np2 = np1.reshape((-1, 7, 48))
+    np2 = np1.reshape((-1, 7, 96))
     load_data = np.expand_dims(np2, axis=3)
 
     # scale to -1 - 1
     scale = np1.max()-np1.min()
     scaled_load_data = (load_data-np1.min()) / scale * 2 - 1
+    scaled_load_data.astype(np.float32)
+    scaled_load_data = scaled_load_data[0:96*10]
     print('scaled_load_data')
     # print(scaled_load_data)
     # training
-    epochs = 10
-    batch_size = 4
+    epochs = 100
+    batch_size = 1
     save_interval = 50
 
     # ground truth
-    valid = np.ones((batch_size, 1))
-    fake = np.zeros((batch_size, 1))
+    valid = -np.ones((batch_size, 1))
+    fake = np.ones((batch_size, 1))
 
     for epoch in range(epochs):
 
         # -----------------------
         # Train discriminator
         # -----------------------
+        for _ in range(n_critic):
 
-        # select the random images
-        idx = np.random.randint(0, scaled_load_data.shape[0], batch_size)
-        imgs = scaled_load_data[idx]
+            # select the random images
+            idx = np.random.randint(0, scaled_load_data.shape[0], batch_size)
+            imgs = scaled_load_data[idx]
 
-        # sample noise and generate fake images
-        noise = np.random.normal(0, 1, (batch_size, latent_dim))
-        gen_imgs = generator.predict(noise)
-        print('generate images')
-        print(gen_imgs.shape)
+            # sample noise and generate fake images
+            noise = np.random.normal(0, 1, (batch_size, latent_dim))
+            gen_imgs = generator.predict(noise)
 
-        d_loss_real = discriminator.train_on_batch(imgs, valid)
-        d_loss_fake = discriminator.train_on_batch(gen_imgs, fake)
+            d_loss_real = discriminator.train_on_batch(imgs, valid)
+            d_loss_fake = discriminator.train_on_batch(gen_imgs, fake)
 
-        d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+            d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+
+            # clip discriminator weights
+            for l in discriminator.layers:
+                weights = l.get_weights()
+                weights = [np.clip(w, -clip_value, clip_value) for w in weights]
+                l.set_weights(weights)
 
         # -----------------------
         # Train generator
@@ -196,7 +214,7 @@ if __name__ == '__main__':
         g_loss = combined.train_on_batch(noise, valid)
 
         # plot progress
-        print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
+        print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, 1-d_loss[0], d_loss[1], 1-g_loss[0]))
 
         # save generated images samples
         if epoch % save_interval == 0:

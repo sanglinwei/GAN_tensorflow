@@ -124,11 +124,19 @@ class DCGAN():
 
             # Select a random half of images
             idx = np.random.randint(0, X_train.shape[0], batch_size)
-            imgs = X_train[idx]
+            # imgs = imgs[idx]
 
+            imgs = np.random.normal(0, 1, (batch_size, 28, 28, 1))
             # Sample noise and generate a batch of new images
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
             gen_imgs = self.generator.predict(noise)
+
+            print('discriminate real')
+            real = self.discriminator.predict(imgs)
+            print(real)
+            print('dicriminate fake')
+            fake = self.discriminator.predict(gen_imgs)
+            print(fake)
 
             # Train the discriminator (real classified as ones and generated as zeros)
             d_loss_real = self.discriminator.train_on_batch(imgs, valid)
@@ -170,4 +178,4 @@ class DCGAN():
 
 if __name__ == '__main__':
     dcgan = DCGAN()
-    dcgan.train(epochs=4, batch_size=32, save_interval=50)
+    dcgan.train(epochs=100, batch_size=32, save_interval=50)

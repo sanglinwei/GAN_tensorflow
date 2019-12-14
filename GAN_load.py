@@ -30,7 +30,7 @@ def get_file_paths(directory):
     return file_path, file_name
 
 
-def build_generator(latent_dim=100, channels=1):
+def build_generator(latent_dim=100):
 
     model = Sequential()
 
@@ -49,13 +49,22 @@ def build_generator(latent_dim=100, channels=1):
     # model.add(Activation('sigmoid'))
 
     # GAN papers
-    model.add(Dense(2 * 12 * 80, activation='relu', input_dim=latent_dim))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Reshape((2, 12, 80)))
-    model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1), name='strange_padding'))
-    model.add(Activation('sigmoid'))
+    model.add(Dense(2 * 12 * 128, activation='relu', use_bias=False, input_dim=latent_dim))
+
+    model.add(BatchNormalization())
+
+    model.add(Reshape((2, 12, 128)))
+
+    model.add(Conv2DTranspose(128, kernel_size=3, strides=2, padding='same', use_bias=False,
+                              kernel_initializer='glorot_normal'))
+    model.add(BatchNormalization())
+    model.add(LeakyReLU(0.2))
+
+    model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1),
+                              use_bias=False, name='strange_padding',
+                              kernel_initializer='glorot_normal'))
+
+    model.add(Activation('tanh'))
 
     model.summary()
 
@@ -89,16 +98,29 @@ def build_discriminator(img_shape=(7, 48, 1)):
     # model.add(Dropout(0.25))
 
     # GAN paper
-    model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
+    model.add(Conv2D(32, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
     model.add(LeakyReLU(0.2))
     model.add(Dropout(0.3))
-    model.add(Conv2D(256, kernel_size=4, strides=2, padding='same'))
+
+    model.add(Conv2D(64, kernel_size=4, strides=1, padding='same'))
     model.add(LeakyReLU(0.2))
     model.add(Dropout(0.3))
+
+    model.add(Conv2D(128, kernel_size=4, strides=2, padding='same'))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(LeakyReLU(0.2))
+    model.add(Dropout(0.3))
+
+    model.add(Conv2D(256, kernel_size=4, strides=1, padding='same'))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(LeakyReLU(0.2))
+    model.add(Dropout(0.3))
+
     model.add(Flatten())
-    model.add(Dense(3072))
-    model.add(LeakyReLU(0.2))
-    model.add(Dropout(0.3))
+    # model.add(Dense(100))
+    # model.add(LeakyReLU(0.2))
+    # model.add(Dropout(0.3))
+
     model.add(Dense(1, activation='sigmoid'))
 
     _img = Input(shape=img_shape)
@@ -118,13 +140,13 @@ if __name__ == '__main__':
     img_shape = (img_rows, img_cols, channels)
     latent_dim = 100
 
-    optimizer_gen = Adam(0.0001, 0.5)
-    optimizer_dis = Adam(0.00005, 0.5)
+    optimizer_gen = Adam(0.0002, 0.5)
+    optimizer_dis = Adam(0.0002, 0.5)
 
     discriminator = build_discriminator(img_shape)
     discriminator.compile(loss='binary_crossentropy', optimizer=optimizer_dis, metrics=['accuracy'])
 
-    generator = build_generator(latent_dim, channels)
+    generator = build_generator(latent_dim)
 
     z = Input(shape=(latent_dim,))
     img = generator(z)
@@ -151,6 +173,7 @@ if __name__ == '__main__':
     np1 = df1[0:idx].to_numpy()[:, 1]
     for i in range(df1.shape[1]-2):
         np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i+2]), axis=0)
+
     np2 = np1.reshape((-1, 7, 48))
     load_data = np.expand_dims(np2, axis=3)
 
@@ -161,7 +184,7 @@ if __name__ == '__main__':
     # print(scaled_load_data)
     # training
     epochs = 10
-    batch_size = 4
+    batch_size = 32
     save_interval = 50
 
     # ground truth
@@ -183,6 +206,12 @@ if __name__ == '__main__':
         gen_imgs = generator.predict(noise)
         print('generate images')
         print(gen_imgs.shape)
+        print('discriminate real')
+        real = discriminator.predict(imgs)
+        print(real)
+        print('dicriminate fake')
+        fake = discriminator.predict(gen_imgs)
+        print(fake)
 
         d_loss_real = discriminator.train_on_batch(imgs, valid)
         d_loss_fake = discriminator.train_on_batch(gen_imgs, fake)
@@ -192,7 +221,7 @@ if __name__ == '__main__':
         # -----------------------
         # Train generator
         # -----------------------
-
+        # try to fool the discriminator
         g_loss = combined.train_on_batch(noise, valid)
 
         # plot progress

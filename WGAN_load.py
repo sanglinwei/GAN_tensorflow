@@ -51,7 +51,7 @@ def build_generator(latent_dim=100, channels=1):
     # model.add(Activation('sigmoid'))
 
     # GAN papers
-    model.add(Dense(2 * 24 * 80, activation='relu', input_dim=latent_dim))
+    model.add(Dense(2 * 24 * 80, activation='relu', use_bias=False, input_dim=latent_dim))
     # model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Reshape((2, 24, 80)))

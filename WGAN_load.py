@@ -1,4 +1,3 @@
-
 # author = "sanglinwei"
 
 from __future__ import print_function, division
@@ -33,7 +32,6 @@ def get_file_paths(directory):
 
 
 def build_generator(latent_dim=100, channels=1):
-
     model = Sequential()
 
     # transposed convolution
@@ -58,7 +56,8 @@ def build_generator(latent_dim=100, channels=1):
     model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
-    model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1), name='strange_padding'))
+    model.add(
+        Conv2DTranspose(1, kernel_size=3, strides=2, padding='same', output_padding=(0, 1), name='strange_padding'))
     model.add(Activation('tanh'))
 
     model.summary()
@@ -72,7 +71,6 @@ def build_generator(latent_dim=100, channels=1):
 
 
 def build_discriminator(img_shape=(7, 96, 1)):
-
     model = Sequential()
 
     # model.add(Conv2D(256, kernel_size=4, strides=2, input_shape=img_shape, padding='same'))
@@ -160,16 +158,16 @@ if __name__ == '__main__':
     df1 = pd.read_csv(sample_path[dataset_id])
     idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
     np1 = df1[0:idx].to_numpy()[:, 1]
-    for i in range(df1.shape[1]-2):
-        np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i+2]), axis=0)
+    for i in range(df1.shape[1] - 2):
+        np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i + 2]), axis=0)
     np2 = np1.reshape((-1, 7, 96))
     load_data = np.expand_dims(np2, axis=3)
 
     # scale to -1 - 1
-    scale = np1.max()-np1.min()
-    scaled_load_data = (load_data-np1.min()) / scale * 2 - 1
+    scale = np1.max() - np1.min()
+    scaled_load_data = (load_data - np1.min()) / scale * 2 - 1
     scaled_load_data.astype(np.float32)
-    scaled_load_data = scaled_load_data[0:96*10]
+    scaled_load_data = scaled_load_data[0:96 * 10]
     print('scaled_load_data')
     # print(scaled_load_data)
     # training
@@ -214,7 +212,7 @@ if __name__ == '__main__':
         g_loss = combined.train_on_batch(noise, valid)
 
         # plot progress
-        print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, 1-d_loss[0], d_loss[1], 1-g_loss[0]))
+        print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, 1 - d_loss[0], d_loss[1], 1 - g_loss[0]))
 
         # save generated images samples
         if epoch % save_interval == 0:
@@ -235,7 +233,6 @@ if __name__ == '__main__':
 
             fig.savefig("image/generate_load_%d.png" % epoch)
             plt.close()
-
 
 # for plotting
 

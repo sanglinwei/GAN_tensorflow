@@ -10,6 +10,7 @@ from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
 from keras.optimizers import RMSprop
 from functools import partial
+import tensorflow as tf
 
 import keras.backend as K
 
@@ -101,13 +102,20 @@ def build_discriminator(img_shape=(7, 96, 1)):
     return Model(_img, validity)
 
 
+# calculate the gradients manually
+def _compute_gradients(tensor, var_list):
+    grads = tf.gradients(tensor, var_list)
+    print(type(grads))
+    print(type(var_list))
+    return [grad if grad is not None else tf.zeros_like(var) for var, grad in tf.map_fn(zip,(var_list, grads))]
+
+
 def gradient_penalty_loss(y_true, y_pred, average_samples):
     """
     compute the gradients penalty
     """
     gradients = K.gradients(y_pred, average_samples)[0]
     gradients_sqr = K.square(gradients)
-
 
     gradients_sqr_sum = K.sum(gradients_sqr, axis=np.arange(1, len(gradients_sqr.shape)))
 
@@ -138,6 +146,7 @@ if __name__ == '__main__':
     # choose training data
     dataset_id = 0
     df1 = pd.read_csv('./dataport/load_profile.csv')
+    df1 = df1.dropna()
     idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
     np1 = df1[0:idx].to_numpy()[:, 1]
     for i in range(df1.shape[1] - 2):
@@ -148,12 +157,13 @@ if __name__ == '__main__':
     # scale to -1 - 1
     scale = np1.max() - np1.min()
     scaled_load_data = (load_data - np1.min()) / scale * 2 - 1
-    scaled_load_data.astype(np.float32)
 
     # bulid the WGAN-GP
     generator = build_generator()
     discriminator = build_discriminator()
 
+    for layers in generator.layers:
+        layers.trainable = False
     generator.trainable = False
 
     real_img = Input(shape=img_shape)
@@ -175,7 +185,10 @@ if __name__ == '__main__':
     discriminator_model = Model(inputs=[real_img, z_disc], outputs=[valid, fake, valid_interpolated])
     discriminator_model.compile(loss=[wasserstein_loss, wasserstein_loss, partial_gp_loss], optimizer=optimizer,
                                 loss_weights=[1, 1, 10])
-
+    for layers in discriminator.layers:
+        layers.trainable = False
+    for layers in generator.layers:
+        layers.trainable = True
     discriminator.trainable = False
     generator.trainable = True
 

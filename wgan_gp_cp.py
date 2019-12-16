@@ -10,7 +10,7 @@ from keras.layers.merge import _Merge
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
+from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose, Conv1D
 from keras.models import Sequential, Model
 from keras.optimizers import RMSprop
 from functools import partial
@@ -31,8 +31,8 @@ class RandomWeightedAverage(_Merge):
 
 class WGANGP():
     def __init__(self):
-        self.img_rows = 7
-        self.img_cols = 96
+        self.img_rows = 28
+        self.img_cols = 28
         self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
         self.latent_dim = 100
@@ -128,29 +128,29 @@ class WGANGP():
 
         model = Sequential()
 
-        # model.add(Dense(128 * 7 * 7, activation="relu", input_dim=self.latent_dim))
-        # model.add(Reshape((7, 7, 128)))
-        # model.add(UpSampling2D())
-        # model.add(Conv2D(128, kernel_size=4, padding="same"))
-        # model.add(BatchNormalization(momentum=0.8))
-        # model.add(Activation("relu"))
-        # model.add(UpSampling2D())
-        # model.add(Conv2D(64, kernel_size=4, padding="same"))
-        # model.add(BatchNormalization(momentum=0.8))
-        # model.add(Activation("relu"))
-        # model.add(Conv2D(self.channels, kernel_size=4, padding="same"))
-        # model.add(Activation("tanh"))
+        model.add(Dense(128 * 7 * 7, activation="relu", input_dim=self.latent_dim))
+        model.add(Reshape((7, 7, 128)))
+        model.add(UpSampling2D())
+        model.add(Conv2D(128, kernel_size=4, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation("relu"))
+        model.add(UpSampling2D())
+        model.add(Conv2D(64, kernel_size=4, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation("relu"))
+        model.add(Conv2D(self.channels, kernel_size=4, padding="same"))
+        model.add(Activation("tanh"))
 
-        model.add(Dense(2 * 24 * 80, activation='relu', use_bias=False, input_dim=self.latent_dim))
-        # model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Reshape((2, 24, 80)))
-        model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Activation('relu'))
-        model.add(
-            Conv2DTranspose(1, kernel_size=3, strides=2, padding='same', output_padding=(0, 1), name='strange_padding'))
-        model.add(Activation('tanh'))
+        # model.add(Dense(2 * 24 * 80, activation='relu', use_bias=False, input_dim=self.latent_dim))
+        # # model.add(LeakyReLU(alpha=0.2))
+        # model.add(BatchNormalization(momentum=0.8))
+        # model.add(Reshape((2, 24, 80)))
+        # model.add(Conv2DTranspose(256, kernel_size=4, strides=2, padding='same'))
+        # model.add(BatchNormalization(momentum=0.8))
+        # model.add(Activation('relu'))
+        # model.add(
+        #     Conv2DTranspose(1, kernel_size=3, strides=2, padding='same', output_padding=(0, 1), name='strange_padding'))
+        # model.add(Activation('tanh'))
 
         model.summary()
 
@@ -163,48 +163,48 @@ class WGANGP():
 
         model = Sequential()
 
-        # model.add(Conv2D(16, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same"))
-        # model.add(LeakyReLU(alpha=0.2))
-        # model.add(Dropout(0.25))
-        # model.add(Conv2D(32, kernel_size=3, strides=2, padding="same"))
-        # model.add(ZeroPadding2D(padding=((0,1),(0,1))))
-        # model.add(BatchNormalization(momentum=0.8))
-        # model.add(LeakyReLU(alpha=0.2))
-        # model.add(Dropout(0.25))
-        # model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
-        # model.add(BatchNormalization(momentum=0.8))
-        # model.add(LeakyReLU(alpha=0.2))
-        # model.add(Dropout(0.25))
-        # model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-        # model.add(BatchNormalization(momentum=0.8))
-        # model.add(LeakyReLU(alpha=0.2))
-        # model.add(Dropout(0.25))
-        # model.add(Flatten())
-        # model.add(Dense(1))
-
-        model.add(Conv2D(32, kernel_size=4, strides=2, input_shape=self.img_shape, padding='same'))
-        model.add(LeakyReLU(0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Conv2D(64, kernel_size=4, strides=1, padding='same'))
-        model.add(LeakyReLU(0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Conv2D(128, kernel_size=4, strides=2, padding='same'))
+        model.add(Conv2D(16, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same"))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(32, kernel_size=3, strides=2, padding="same"))
+        model.add(ZeroPadding2D(padding=((0,1),(0,1))))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(LeakyReLU(0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Conv2D(256, kernel_size=4, strides=1, padding='same'))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(LeakyReLU(0.2))
-        model.add(Dropout(0.3))
-
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
         model.add(Flatten())
+        model.add(Dense(1))
+
+        # model.add(Conv2D(32, kernel_size=4, strides=2, input_shape=self.img_shape, padding='same'))
+        # model.add(LeakyReLU(0.2))
+        # model.add(Dropout(0.3))
+        #
+        # model.add(Conv2D(64, kernel_size=4, strides=1, padding='same'))
+        # model.add(LeakyReLU(0.2))
+        # model.add(Dropout(0.3))
+        #
+        # model.add(Conv2D(128, kernel_size=4, strides=2, padding='same'))
+        # model.add(BatchNormalization(momentum=0.8))
+        # model.add(LeakyReLU(0.2))
+        # model.add(Dropout(0.3))
+        #
+        # model.add(Conv2D(256, kernel_size=4, strides=1, padding='same'))
+        # model.add(BatchNormalization(momentum=0.8))
+        # model.add(LeakyReLU(0.2))
+        # model.add(Dropout(0.3))
+
+        # model.add(Flatten())
         # model.add(Dense(100))
         # model.add(LeakyReLU(0.2))
         # model.add(Dropout(0.3))
-        model.add(Dense(1, activation='sigmoid'))
+        # model.add(Dense(1, activation='sigmoid'))
 
         model.summary()
 
@@ -216,25 +216,24 @@ class WGANGP():
     def train(self, epochs, batch_size, sample_interval=50):
 
         # # Load the dataset
-        # (X_train, _), (_, _) = mnist.load_data()
-        #
-        # # Rescale -1 to 1
-        # X_train = (X_train.astype(np.float32) - 127.5) / 127.5
-        # X_train = np.expand_dims(X_train, axis=3)
+        (X_train, _), (_, _) = mnist.load_data()
+
+        # Rescale -1 to 1
+        X_train = (X_train.astype(np.float32) - 127.5) / 127.5
+        X_train = np.expand_dims(X_train, axis=3)
 
         df1 = pd.read_csv('./dataport/load_profile.csv')
-        idx = int(df1.shape[0] / (7 * 96)) * 7 * 96
+        idx = int(df1.shape[0] / (28 * 28)) * 28 * 28
         np1 = df1[0:idx].to_numpy()[:, 1]
         for i in range(df1.shape[1] - 2):
             np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i + 2]), axis=0)
-        np2 = np1.reshape((-1, 7, 96))
+        np2 = np1.reshape((-1, 28, 28))
         load_data = np.expand_dims(np2, axis=3)
 
         # scale to -1 - 1
         scale = np1.max() - np1.min()
         scaled_load_data = (load_data - np1.min()) / scale * 2 - 1
-        X_train = scaled_load_data.astype(np.float32)
-
+        # X_train = scaled_load_data.astype(np.float32)
 
         # Adversarial ground truths
         valid = -np.ones((batch_size, 1))

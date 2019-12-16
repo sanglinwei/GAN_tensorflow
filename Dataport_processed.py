@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import os
-
+from keras.datasets import mnist
 
 # get file path from the
 def get_file_paths(directory):
@@ -25,6 +25,8 @@ if __name__ == '__main__':
     metadata_extract = metadata[['dataid', 'city', 'state']]
     metadata_extract.to_csv('processed_data/metadata_extract.csv')
 
+
+
     # df1 = pd.read_csv(sample_path[1])
     # time_tran = pd.to_datetime(df0['DATA_TIME'])
     # df0['DATA_TIME'] = time_tran.apply(lambda x: x.time())
@@ -43,3 +45,30 @@ if __name__ == '__main__':
     # df_combine['CONSNO'].value_counts()
     # df_r = pd.read_csv(r)
     # df_r['CONSNO'].value_counts()
+
+    # # Load the dataset
+    (X_train, _), (_, _) = mnist.load_data()
+
+    # Rescale -1 to 1
+    X_train = (X_train.astype(np.float32) - 127.5) / 127.5
+    X_train = np.expand_dims(X_train, axis=3)
+    X_train = pd.DataFrame(X_train.reshape([-1, 28*28]))
+
+    df1 = pd.read_csv('./dataport/load_profile.csv')
+    df1.dropna()
+    idx = int(df1.shape[0] / (28 * 28)) * 28 * 28
+    np1 = df1[0:idx].to_numpy()[:, 1]
+    for i in range(df1.shape[1] - 2):
+        np1 = np.concatenate((np1, df1[0:idx].to_numpy()[:, i + 2]), axis=0)
+    np2 = np1.reshape((-1, 28, 28))
+    load_data = np.expand_dims(np2, axis=3)
+
+    # scale to -1 - 1
+    scale = np1.max() - np1.min()
+    scaled_load_data = (load_data - np1.min()) / scale * 2 - 1
+    load_data_pd = pd.DataFrame(scaled_load_data.reshape([-1, 28*28]))
+
+
+
+
+

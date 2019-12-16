@@ -51,13 +51,13 @@ def build_generator(latent_dim=100):
     # GAN papers
     model.add(Dense(2 * 12 * 128, activation='relu', use_bias=False, input_dim=latent_dim))
 
-    model.add(BatchNormalization())
+    model.add(BatchNormalization(momentum=0.8))
 
     model.add(Reshape((2, 12, 128)))
 
     model.add(Conv2DTranspose(128, kernel_size=3, strides=2, padding='same', use_bias=False,
                               kernel_initializer='glorot_normal'))
-    model.add(BatchNormalization())
+    model.add(BatchNormalization(momentum=0.8))
     model.add(LeakyReLU(0.2))
 
     model.add(Conv2DTranspose(1, kernel_size=3, strides=2,  padding='same', output_padding=(0, 1),
@@ -169,6 +169,7 @@ if __name__ == '__main__':
     # choose training data
     dataset_id = 0
     df1 = pd.read_csv(sample_path[dataset_id])
+    df1 = df1.dropna()
     idx = int(df1.shape[0] / (7 * 48)) * 7 * 48
     np1 = df1[0:idx].to_numpy()[:, 1]
     for i in range(df1.shape[1]-2):
